@@ -84,3 +84,8 @@ class WastedYearsDB:
                     end_ts=task.end_ts,
                     description=task.description))
         self.conn.execute(stmt)
+
+    def list_tasks(self):
+        stmt = self.tbl_tasks.select()
+        rows = self.conn.execute(stmt)
+        return [models.Task(**row) for row in rows]

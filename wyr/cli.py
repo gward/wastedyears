@@ -29,6 +29,7 @@ def task(taskword: Tuple[str]):
     cfg = config.get_config()
 
     now = datetime.datetime.utcnow()
+    now = now.replace(microsecond=0)    # truncate to nearest second
     taskwords = list(taskword)
     if taskwords:
         task = models.Task(start_ts=now, description=' '.join(taskwords))
@@ -45,6 +46,28 @@ def task(taskword: Tuple[str]):
 
 def _run_editor():
     raise NotImplementedError()
+
+
+@main.command('ls-tasks')
+def list_tasks():
+    cfg = config.get_config()
+    db = database.open_db(cfg)
+    tasks = db.list_tasks()
+
+    for task in tasks:
+        if task.start_ts is None:
+            print(f'warning: invalid task {task.task_id} in database ' +
+                  '(start_ts not set)',
+                  file=sys.stderr)
+            continue
+
+        date = task.start_ts.strftime('%Y-%m-%d')
+        start_time = task.start_ts.strftime('%H:%M:%S')
+        end_time = '   --   '
+        if task.end_ts is not None:
+            end_time = task.end_ts.strftime('%H:%M:%S')
+
+        print(f'{date}: {start_time} … {end_time}: {task.description}')
 
 
 if __name__ == '__main__':
