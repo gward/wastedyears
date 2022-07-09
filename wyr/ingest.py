@@ -23,7 +23,7 @@ Then repeat that block for as many dates as you please.
 
 import datetime
 import re
-from typing import Optional
+from typing import Optional, Iterable
 
 from . import models, database
 
@@ -32,7 +32,7 @@ divider_re = re.compile(r'^-+$')
 task_re = re.compile(r'^(\d{2}):(\d{2})\s*\.\.\s*(\d{2}):(\d{2})\s+(.*)')
 
 
-def ingest(db: database.WastedYearsDB, infile):
+def ingest(db: database.WastedYearsDB, infile) -> Iterable[models.Task]:
     current_date = None
     previous_task = None
     for (line_num, line) in enumerate(infile):
@@ -50,7 +50,7 @@ def ingest(db: database.WastedYearsDB, infile):
                     f'{infile.name}:{line_num+1}: task without any date')
 
             task = _parse_task(current_date, previous_task, match)
-            print(task)
+            yield task
             previous_task = task
         else:
             raise ValueError(

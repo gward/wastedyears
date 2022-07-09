@@ -78,7 +78,11 @@ def ingest(infile):
 
     cfg = config.get_config()
     db = database.open_db(cfg)
-    ingest_.ingest(db, infile)
+    db.begin()
+    for task in ingest_.ingest(db, infile):
+        print(task)
+        db.add_task(task)
+    db.commit()
 
 
 if __name__ == '__main__':
