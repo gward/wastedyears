@@ -5,9 +5,10 @@ install_requires = [
     'SQLAlchemy >= 1.4',
 ]
 dev_requires = [
+    'mypy >= 0.961',
     'pyflakes >= 2.4.0',
     'pycodestyle >= 2.8.0',
-    'mypy >= 0.961',
+    'pytest >= 7.1',
 ]
 
 setuptools.setup(

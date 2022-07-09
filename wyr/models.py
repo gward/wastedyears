@@ -1,5 +1,6 @@
 import dataclasses
 import datetime
+import re
 from typing import Optional
 
 
@@ -15,3 +16,23 @@ class Task:
 
     def __str__(self):
         return f'{self.start_ts} … {self.end_ts}: {self.description}'
+
+
+_simple_url_re = re.compile(r'[a-z0-9\+\-]+://\S+')
+_split_re = re.compile(r'\b')
+
+
+def split_description(desc: str) -> list[str]:
+    urls = []
+
+    def repl(match):
+        urls.append(match.group())
+        return ''
+
+    desc = _simple_url_re.sub(repl, desc)
+    words = []
+    for (idx, chunk) in enumerate(_split_re.split(desc)):
+        if idx % 2 == 1:
+            words.append(chunk)
+
+    return sorted(words) + urls
