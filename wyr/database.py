@@ -1,5 +1,6 @@
 '''the wastedyears database interface'''
 
+from __future__ import annotations
 import datetime
 
 import sqlalchemy as sa
@@ -8,7 +9,7 @@ from sqlalchemy import event, exc as saexc
 from . import config, models
 
 
-def open_db(cfg: config.Config):
+def open_db(cfg: config.Config) -> WastedYearsDB:
     cfg.create_data_dir()
     engine = sa.create_engine(cfg.db_url)
     engine = engine.execution_options(autocommit=False)

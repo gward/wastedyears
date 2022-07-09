@@ -1,9 +1,10 @@
 '''wastedyears configuration data'''
 
+from __future__ import annotations
 import os
 
 
-def get_config():
+def get_config() -> Config:
     '''return a Config object ready to use'''
     return Config()
 
