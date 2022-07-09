@@ -1,9 +1,10 @@
 '''wastedyears, the command-line interface'''
 
+import datetime
+import sys
 from typing import Tuple
 
 import click
-import datetime
 
 from . import config, models, database
 
@@ -68,6 +69,16 @@ def list_tasks():
             end_time = task.end_ts.strftime('%H:%M:%S')
 
         print(f'{date}: {start_time} … {end_time}: {task.description}')
+
+
+@main.command('ingest')
+@click.argument('infile', type=click.File('rt'))
+def ingest(infile):
+    from . import ingest as ingest_
+
+    cfg = config.get_config()
+    db = database.open_db(cfg)
+    ingest_.ingest(db, infile)
 
 
 if __name__ == '__main__':

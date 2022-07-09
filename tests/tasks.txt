@@ -1,0 +1,24 @@
+2022-02-28
+----------
+10:00 .. 10:15 daydreaming
+
+
+2022-06-11
+----------
+08:43 .. 08:59 check email
+08:59 .. 10:15 coffee watercooler
+10:15 .. 10:30 check email
+10:30 .. 11:02 look busy
+11:02 .. 13:59 lunch
+13:59 .. 13:59 phone call
+13:59 .. 14:31 check email
+14:31 .. 15:02 look busy
+
+2022-06-12
+----------
+08:51 .. 11:43 work on feature http://bugs.example.com/1323
+11:43 .. 12:32 lunch
+12:32 .. 12:32 phone call
+12:33 .. 13:17 work on bug http://bugs.example.com/2322
+13:17 .. 13:18 watercooler
+13:18 .. 14:01 check email

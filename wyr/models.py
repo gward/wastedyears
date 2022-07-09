@@ -12,3 +12,6 @@ class Task:
     start_ts: Optional[datetime.datetime] = None
     end_ts: Optional[datetime.datetime] = None
     description: str = ''
+
+    def __str__(self):
+        return f'{self.start_ts} … {self.end_ts}: {self.description}'
