@@ -4,14 +4,19 @@ from __future__ import annotations
 import datetime
 
 import sqlalchemy as sa
-from sqlalchemy import event, exc as saexc
+from sqlalchemy import event
 
 from . import config, models
 
 
 def open_db(cfg: config.Config) -> WastedYearsDB:
     cfg.create_data_dir()
-    engine = sa.create_engine(cfg.db_url)
+    engine = create_engine(cfg.db_url)
+    return WastedYearsDB(engine)
+
+
+def create_engine(db_url: str) -> sa.engine.base.Engine:
+    engine = sa.create_engine(db_url)
     engine = engine.execution_options(autocommit=False)
     event.listen(
         engine,
@@ -19,14 +24,11 @@ def open_db(cfg: config.Config) -> WastedYearsDB:
         lambda conn, conn_record: conn.execute('pragma foreign_keys=on'),
     )
 
-    try:
-        with engine.connect():
-            pass
-    except saexc.OperationalError as err:
-        print('db_url:', cfg.db_url)
-        raise err
+    # make sure it actually works
+    with engine.connect():
+        pass
 
-    return WastedYearsDB(engine)
+    return engine
 
 
 class WastedYearsDB:
@@ -44,8 +46,18 @@ class WastedYearsDB:
         'words',
         metadata,
         sa.Column('word_id', sa.Integer, primary_key=True),
-        sa.Column('last_task_id', sa.Integer),
-        sa.Column('word', sa.String),
+        sa.Column('word', sa.String, unique=True),
+        sa.Column('total_elapsed', sa.Integer),
+    )
+
+    # association table, so we can update words when we delete/modify an
+    # existing task
+    tbl_task_words = sa.Table(
+        'task_words',
+        metadata,
+        sa.Column('task_id', sa.Integer, sa.ForeignKey('tasks.task_id')),
+        sa.Column('word_id', sa.Integer, sa.ForeignKey('words.word_id')),
+        sa.UniqueConstraint('task_id', 'word_id'),
     )
 
     def __init__(self, engine: sa.engine.base.Engine):
@@ -76,7 +88,10 @@ class WastedYearsDB:
                '(select task_id from tasks order by task_id desc limit 1)')
         self.conn.execute(sql, (end_ts,))
 
-    def add_task(self, task: models.Task):
+    def add_task(self, task: models.Task) -> int:
+        words = models.split_description(task.description)
+        new_words = self.upsert_words(words)
+
         stmt = (self.tbl_tasks
                 .insert()
                 .values(
@@ -84,9 +99,56 @@ class WastedYearsDB:
                     start_ts=task.start_ts,
                     end_ts=task.end_ts,
                     description=task.description))
-        self.conn.execute(stmt)
+        result = self.conn.execute(stmt)
+        task_id = result.inserted_primary_key[0]
+        assert isinstance(task_id, int)
+
+        word_ids: set[int] = set(new_words.values())
+        lookup = set(words) - new_words.keys()
+        if lookup:
+            stmt = self.tbl_words.select().where(self.tbl_words.c.word.in_(lookup))
+            rows = self.conn.execute(stmt)
+            for row in rows:
+                word_ids.add(row.word_id)
+
+        stmt = self.tbl_task_words.insert()
+        values = [{'task_id': task_id, 'word_id': word_id}
+                  for word_id in word_ids]
+        self.conn.execute(stmt, values)
+
+        return task_id
+
+    def upsert_words(self, words: list[str]) -> dict[str, int]:
+        '''Insert words that are not already in the database.
+        Ignore words that are there.
+
+        Return a map of word to word_id for newly inserted words.
+        '''
+        if not words:
+            return {}
+
+        sql = ('insert into words (word) values ' +
+               ', '.join(['(?)'] * len(words)) +
+               'on conflict do nothing '
+               'returning word, word_id')
+
+        result = self.conn.execute(sql, tuple(words))
+        return {row.word: row.word_id for row in result}
 
     def list_tasks(self):
         stmt = self.tbl_tasks.select()
         rows = self.conn.execute(stmt)
-        return [models.Task(**row) for row in rows]
+        return [self.load_task(row) for row in rows]
+
+    def load_task(self, row) -> models.Task:
+        task = models.Task(**row)
+
+        # SQLite has no knowledge of timezones, but we always write
+        # datetimes to the database in UTC. Make that explicit on the way
+        # back in.
+        for (attr, val) in vars(task).items():
+            if isinstance(val, datetime.datetime) and val.tzinfo is None:
+                val = val.replace(tzinfo=datetime.timezone.utc)
+                setattr(task, attr, val)
+
+        return task
