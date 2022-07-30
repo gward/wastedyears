@@ -9,7 +9,27 @@ import click
 from . import config, models, database
 
 
-@click.group
+class AliasedGroup(click.Group):
+    aliases = {
+        't': 'task',
+        'ls': 'ls-tasks',
+    }
+
+    def list_commands(self, ctx):
+        # return a more sensible order (not alphabetical)
+        return [
+            'init',
+            'task',
+            'ls-tasks',
+            'ingest',
+        ]
+
+    def get_command(self, ctx, cmd_name):
+        cmd_name = self.aliases.get(cmd_name, cmd_name)
+        return super().get_command(ctx, cmd_name)
+
+
+@click.group(cls=AliasedGroup)
 def main():
     pass
 
@@ -27,6 +47,7 @@ def init():
 @main.command()
 @click.argument('taskword', nargs=-1)
 def task(taskword: Tuple[str]):
+    '''start a new task (and mark the previous one done)'''
     cfg = config.get_config()
 
     now = datetime.datetime.utcnow()
@@ -51,6 +72,7 @@ def _run_editor():
 
 @main.command('ls-tasks')
 def list_tasks():
+    '''list all tasks in the database'''
     cfg = config.get_config()
     db = database.open_db(cfg)
     tasks = db.list_tasks()
@@ -74,6 +96,7 @@ def list_tasks():
 @main.command('ingest')
 @click.argument('infile', type=click.File('rt'))
 def ingest(infile):
+    '''read old tasks from a text file into the database'''
     from . import ingest as ingest_
 
     cfg = config.get_config()
