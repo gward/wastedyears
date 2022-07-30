@@ -39,9 +39,17 @@ def init():
     '''initialize wastedyears (database only -- no config file yet)'''
     cfg = config.get_config()
     db = database.open_db(cfg)
+    db.begin()
     db.init_schema()
+    db.commit()
     db.close()
-    print('database initialized:', db)
+
+
+@main.command()
+def nuke():
+    '''destroy the database (no takebacks)'''
+    cfg = config.get_config()
+    database.nuke_db(cfg)
 
 
 @main.command()

@@ -9,6 +9,7 @@ dev_requires = [
     'pyflakes >= 2.4.0',
     'pycodestyle >= 2.8.0',
     'pytest >= 7.1',
+    'sqlalchemy-stubs >= 0.4',
 ]
 
 setuptools.setup(

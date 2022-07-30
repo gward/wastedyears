@@ -2,14 +2,16 @@ import datetime
 import os
 import shutil
 import tempfile
+from typing import Optional
 
 import pytest
 import sqlalchemy as sa
+import sqlalchemy.engine.base
 
 from wyr import database, models
 
-_tmp_dir = None
-_test_engine = None
+_tmp_dir: Optional[str] = None
+_test_engine: Optional[sqlalchemy.engine.base.Engine] = None
 
 
 def open_test_db() -> database.WastedYearsDB:
@@ -19,7 +21,7 @@ def open_test_db() -> database.WastedYearsDB:
         db_url = 'sqlite:///' + os.path.join(_tmp_dir, 'test.sqlite')
         _test_engine = database.create_engine(db_url)
 
-    db = database.WastedYearsDB(_test_engine)
+    db = database.WastedYearsDB(_test_engine.connect())
     db.init_schema()
     return db
 
@@ -122,13 +124,13 @@ class TestWastedYearsDB:
     def _get_words(self, db: database.WastedYearsDB) -> list[str]:
         tbl = db.tbl_words
         rows = db.conn.execute(
-            sa.select(tbl.c.word).order_by(tbl.c.word))
+            sa.select([tbl.c.word]).order_by(tbl.c.word))
         return [row[0] for row in rows]
 
     def _get_task_words(self, db: database.WastedYearsDB) -> list[tuple[int, str]]:
         tbl_tw = db.tbl_task_words
         tbl_w = db.tbl_words
-        join = (sa.select(tbl_tw.c.task_id, tbl_w.c.word)
+        join = (sa.select([tbl_tw.c.task_id, tbl_w.c.word])
                 .select_from(tbl_tw.join(tbl_w))
                 .order_by(tbl_tw.c.task_id, tbl_w.c.word))
         return db.conn.execute(join).fetchall()

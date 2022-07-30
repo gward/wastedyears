@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 import datetime
+import os
+from typing import Optional
 
 import sqlalchemy as sa
 from sqlalchemy import event
@@ -12,7 +14,20 @@ from . import config, models
 def open_db(cfg: config.Config) -> WastedYearsDB:
     cfg.create_data_dir()
     engine = create_engine(cfg.db_url)
-    return WastedYearsDB(engine)
+    return WastedYearsDB(engine.connect())
+
+
+def nuke_db(cfg: config.Config):
+    prefix = 'sqlite:///'
+    if cfg.db_url.startswith(prefix):
+        filename = cfg.db_url[len(prefix):]
+        try:
+            os.remove(filename)
+        except FileNotFoundError:
+            pass
+        return
+
+    raise RuntimeError(f'cannot nuke database: {cfg.db_url}')
 
 
 def create_engine(db_url: str) -> sa.engine.base.Engine:
@@ -60,9 +75,11 @@ class WastedYearsDB:
         sa.UniqueConstraint('task_id', 'word_id'),
     )
 
-    def __init__(self, engine: sa.engine.base.Engine):
-        self.engine = engine
-        self.conn = engine.connect()
+    conn: sa.engine.base.Connection
+    txn: Optional[sa.engine.base.Transaction]
+
+    def __init__(self, conn: sa.engine.base.Connection):
+        self.conn = conn
         self.txn = None
 
     def close(self):
@@ -79,7 +96,7 @@ class WastedYearsDB:
         self.txn = None
 
     def init_schema(self):
-        self.metadata.create_all(self.engine)
+        self.metadata.create_all(bind=self.conn)
 
     def end_last_task(self, end_ts: datetime.datetime):
         '''update the most recently added task: set end_ts, if not already set'''
@@ -92,29 +109,30 @@ class WastedYearsDB:
         words = models.split_description(task.description)
         new_words = self.upsert_words(words)
 
-        stmt = (self.tbl_tasks
-                .insert()
-                .values(
-                    update_ts=sa.text('datetime()'),
-                    start_ts=task.start_ts,
-                    end_ts=task.end_ts,
-                    description=task.description))
-        result = self.conn.execute(stmt)
+        insert = (
+            self.tbl_tasks
+            .insert()
+            .values(
+                update_ts=sa.text('datetime()'),
+                start_ts=task.start_ts,
+                end_ts=task.end_ts,
+                description=task.description))
+        result = self.conn.execute(insert)
         task_id = result.inserted_primary_key[0]
         assert isinstance(task_id, int)
 
         word_ids: set[int] = set(new_words.values())
         lookup = set(words) - new_words.keys()
         if lookup:
-            stmt = self.tbl_words.select().where(self.tbl_words.c.word.in_(lookup))
-            rows = self.conn.execute(stmt)
+            select = self.tbl_words.select().where(self.tbl_words.c.word.in_(lookup))
+            rows = self.conn.execute(select)
             for row in rows:
                 word_ids.add(row.word_id)
 
-        stmt = self.tbl_task_words.insert()
+        insert = self.tbl_task_words.insert()
         values = [{'task_id': task_id, 'word_id': word_id}
                   for word_id in word_ids]
-        self.conn.execute(stmt, values)
+        self.conn.execute(insert, values)
 
         return task_id
 
