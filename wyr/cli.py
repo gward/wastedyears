@@ -55,8 +55,7 @@ def task(taskword: Tuple[str]):
     '''start a new task (and mark the previous one done)'''
     cfg = config.get_config()
 
-    now = datetime.datetime.utcnow()
-    now = now.replace(microsecond=0)    # truncate to nearest second
+    now = _now()
     taskwords = list(taskword)
     if taskwords:
         task = models.Task(start_ts=now, description=' '.join(taskwords))
@@ -66,6 +65,14 @@ def task(taskword: Tuple[str]):
     with database.open_db(cfg) as db:
         db.end_last_task(now)
         db.add_task(task)
+
+
+@main.command()
+def done():
+    '''mark the current task done without starting a new one'''
+    cfg = config.get_config()
+    with database.open_db(cfg) as db:
+        db.end_last_task(_now())
 
 
 def _run_editor():
@@ -106,6 +113,13 @@ def ingest(infile):
         for task in ingest_.ingest(db, infile):
             print(task)
             db.add_task(task)
+
+
+def _now() -> datetime.datetime:
+    '''return current time, in UTC, truncated to second'''
+    now = datetime.datetime.utcnow()
+    now = now.replace(microsecond=0)
+    return now
 
 
 if __name__ == '__main__':
