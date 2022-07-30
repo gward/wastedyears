@@ -80,13 +80,22 @@ class WastedYearsDB:
 
     def __init__(self, conn: sa.engine.base.Connection):
         self.conn = conn
-        self.txn = None
+        self.txn = conn.begin()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, type_, value, traceback):
+        if self.txn is not None:
+            self.txn.__exit__(type_, value, traceback)
+        self.close()
 
     def close(self):
         self.conn.close()
 
     def begin(self):
         """Begin a new transaction."""
+        assert self.txn is None, 'a transaction is already open'
         self.txn = self.conn.begin()
 
     def commit(self):

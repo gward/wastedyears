@@ -38,11 +38,8 @@ def main():
 def init():
     '''initialize wastedyears (database only -- no config file yet)'''
     cfg = config.get_config()
-    db = database.open_db(cfg)
-    db.begin()
-    db.init_schema()
-    db.commit()
-    db.close()
+    with database.open_db(cfg) as db:
+        db.init_schema()
 
 
 @main.command()
@@ -66,12 +63,9 @@ def task(taskword: Tuple[str]):
     else:
         task = _run_editor()
 
-    db = database.open_db(cfg)
-    db.begin()
-    db.end_last_task(now)
-    db.add_task(task)
-    db.commit()
-    db.close()
+    with database.open_db(cfg) as db:
+        db.end_last_task(now)
+        db.add_task(task)
 
 
 def _run_editor():
@@ -82,8 +76,8 @@ def _run_editor():
 def list_tasks():
     '''list all tasks in the database'''
     cfg = config.get_config()
-    db = database.open_db(cfg)
-    tasks = db.list_tasks()
+    with database.open_db(cfg) as db:
+        tasks = db.list_tasks()
 
     for task in tasks:
         if task.start_ts is None:
@@ -108,12 +102,10 @@ def ingest(infile):
     from . import ingest as ingest_
 
     cfg = config.get_config()
-    db = database.open_db(cfg)
-    db.begin()
-    for task in ingest_.ingest(db, infile):
-        print(task)
-        db.add_task(task)
-    db.commit()
+    with database.open_db(cfg) as db:
+        for task in ingest_.ingest(db, infile):
+            print(task)
+            db.add_task(task)
 
 
 if __name__ == '__main__':
