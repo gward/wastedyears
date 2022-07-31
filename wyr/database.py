@@ -61,7 +61,8 @@ class WastedYearsDB:
         'words',
         metadata,
         sa.Column('word_id', sa.Integer, primary_key=True),
-        sa.Column('word', sa.String, unique=True),
+        sa.Column('word', sa.String, unique=True, nullable=False),
+        sa.Column('total_count', sa.Integer, nullable=False),
         sa.Column('total_elapsed', sa.Integer),
     )
 
@@ -109,15 +110,34 @@ class WastedYearsDB:
 
     def end_last_task(self, end_ts: datetime.datetime):
         '''update the most recently added task: set end_ts, if not already set'''
-        sql = ('update tasks set end_ts = ? ' +
-               'where end_ts is null and task_id in '
-               '(select task_id from tasks order by task_id desc limit 1)')
-        self.conn.execute(sql, (end_ts,))
+        tbl = self.tbl_tasks
+        result = self.conn.execute(
+            sa.select([
+                tbl.c.task_id,
+                tbl.c.start_ts,
+                tbl.c.end_ts,
+                tbl.c.description,
+            ])
+            .order_by(tbl.c.task_id.desc())
+            .limit(1)
+        )
+        row = result.fetchone()
+        if row and row.end_ts is None:
+            # The last task exists and is indeed unfinished.
+            # Mark it finished by setting end_ts.
+            result = self.conn.execute(
+                tbl.update()
+                .values(end_ts=end_ts)
+                .where(tbl.c.task_id == row.task_id))
+
+            # Store the words for this task (since end_ts was null, we must
+            # have skipped this when the task was previously added).
+            elapsed = (end_ts - row.start_ts).seconds
+            words = models.split_description(row.description)
+            self.upsert_words(row.task_id, words, elapsed)
 
     def add_task(self, task: models.Task) -> int:
-        words = models.split_description(task.description)
-        new_words = self.upsert_words(words)
-
+        # Unconditionally insert the task itself.
         insert = (
             self.tbl_tasks
             .insert()
@@ -130,22 +150,23 @@ class WastedYearsDB:
         task_id = result.inserted_primary_key[0]
         assert isinstance(task_id, int)
 
-        word_ids: set[int] = set(new_words.values())
-        lookup = set(words) - new_words.keys()
-        if lookup:
-            select = self.tbl_words.select().where(self.tbl_words.c.word.in_(lookup))
-            rows = self.conn.execute(select)
-            for row in rows:
-                word_ids.add(row.word_id)
+        if task.end_ts is not None:
+            # If the end time is known, that's enough to insert/update
+            # the words in the task. If not, wait until end_last_task().
+            assert task.start_ts is not None
+            elapsed = (task.end_ts - task.start_ts).seconds
 
-        insert = self.tbl_task_words.insert()
-        values = [{'task_id': task_id, 'word_id': word_id}
-                  for word_id in word_ids]
-        self.conn.execute(insert, values)
+            words = models.split_description(task.description)
+            self.upsert_words(task_id, words, elapsed)
 
         return task_id
 
-    def upsert_words(self, words: list[str]) -> dict[str, int]:
+    def upsert_words(
+            self,
+            task_id: int,
+            words: list[str],
+            elapsed: int,
+    ) -> dict[str, int]:
         '''Insert words that are not already in the database.
         Ignore words that are there.
 
@@ -154,13 +175,51 @@ class WastedYearsDB:
         if not words:
             return {}
 
-        sql = ('insert into words (word) values ' +
-               ', '.join(['(?)'] * len(words)) +
-               'on conflict do nothing '
-               'returning word, word_id')
+        new_words: dict[str, int] = {}
 
-        result = self.conn.execute(sql, tuple(words))
-        return {row.word: row.word_id for row in result}
+        # Cannot use sqlalchemy.dialect.sqlite.insert() here: it does not
+        # support '.returning()'.
+        upsert = (
+            'insert into words (word, total_count, total_elapsed) values ' +
+            ' (?, ?, ?)' +
+            ' on conflict do nothing' +
+            ' returning word, word_id')
+        for word in words:
+            result = self.conn.execute(upsert, (word, 1, elapsed))
+            row = result.fetchone()
+            if row:
+                new_words[row.word] = row.word_id
+
+        tbl = self.tbl_words
+        old_words = set(words) - new_words.keys()
+        for word in old_words:
+            self.conn.execute(
+                tbl.update()
+                .values(
+                    total_count=sa.text('total_count + 1'),
+                    total_elapsed=tbl.c.total_elapsed + elapsed,
+                )
+                .where(tbl.c.word == word),
+            )
+
+        # Update task_words to associate all words with task_id.
+        word_ids: set[int] = set(new_words.values())
+        existing_words = set(words) - new_words.keys()
+        if existing_words:
+            rows = self.conn.execute(
+                tbl
+                .select()
+                .where(tbl.c.word.in_(existing_words))
+            )
+            for row in rows:
+                word_ids.add(row.word_id)
+
+        insert = self.tbl_task_words.insert()
+        values = [{'task_id': task_id, 'word_id': word_id}
+                  for word_id in word_ids]
+        self.conn.execute(insert, values)
+
+        return new_words
 
     def list_tasks(self):
         stmt = self.tbl_tasks.select()
