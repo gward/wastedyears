@@ -18,6 +18,14 @@ class Task:
         return f'{self.start_ts} … {self.end_ts}: {self.description}'
 
 
+@dataclasses.dataclass
+class WordInfo:
+    word_id: int = 0
+    word: str = ''
+    total_count: int = 0
+    total_elapsed: int = 0
+
+
 _simple_url_re = re.compile(r'[a-z0-9\+\-]+://\S+')
 _split_re = re.compile(r'\b')
 

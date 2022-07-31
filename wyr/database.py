@@ -226,6 +226,29 @@ class WastedYearsDB:
         rows = self.conn.execute(stmt)
         return [self.load_task(row) for row in rows]
 
+    def list_words(self, order_by: str) -> list[models.WordInfo]:
+        tbl = self.tbl_words
+        order_map = {
+            'i': tbl.c.word_id,
+            'w': tbl.c.word,
+            'c': tbl.c.total_count.desc(),
+            'e': tbl.c.total_elapsed.desc(),
+        }
+        order_cols = []
+        for letter in order_by:
+            order_cols.append(order_map[letter])
+
+        columns = [
+            tbl.c.word_id,
+            tbl.c.word,
+            tbl.c.total_count,
+            tbl.c.total_elapsed,
+        ]
+
+        result = self.conn.execute(
+            sa.select(columns).order_by(*order_cols))
+        return [models.WordInfo(**row) for row in result]
+
     def load_task(self, row) -> models.Task:
         task = models.Task(**row)
 

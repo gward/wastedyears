@@ -13,6 +13,7 @@ class AliasedGroup(click.Group):
     aliases = {
         't': 'task',
         'ls': 'ls-tasks',
+        'lsw': 'ls-words',
     }
 
     def list_commands(self, ctx):
@@ -21,6 +22,7 @@ class AliasedGroup(click.Group):
             'init',
             'task',
             'ls-tasks',
+            'ls-words',
             'ingest',
         ]
 
@@ -100,6 +102,18 @@ def list_tasks():
             end_time = task.end_ts.strftime('%H:%M:%S')
 
         print(f'{date}: {start_time} … {end_time}: {task.description}')
+
+
+@main.command('ls-words')
+def list_words():
+    '''list all unique words in the database'''
+    cfg = config.get_config()
+    with database.open_db(cfg) as db:
+        # list of WordInfo objects sorted by descending elapsed, count
+        words = db.list_words(order_by='ec')
+
+    for wordinfo in words:
+        print(f'{wordinfo.total_count:-6}{wordinfo.total_elapsed:-8}s  {wordinfo.word}')
 
 
 @main.command('ingest')
