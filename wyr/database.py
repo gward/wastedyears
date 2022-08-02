@@ -226,6 +226,18 @@ class WastedYearsDB:
         rows = self.conn.execute(stmt)
         return [self.load_task(row) for row in rows]
 
+    def get_task_dates(self) -> list[datetime.datetime]:
+        '''return the list of distinct dates on which a task started'''
+        tbl = self.tbl_tasks
+        result = self.conn.execute(
+            sa.select([
+                # SQLite's date() function truncates a datetime to a date.
+                sa.distinct(sa.func.date(tbl.c.start_ts, type_=sa.Date)),
+            ])
+            .order_by(tbl.c.start_ts)
+        )
+        return [row[0] for row in result]
+
     def list_words(self, order_by: str) -> list[models.WordInfo]:
         tbl = self.tbl_words
         order_map = {
@@ -248,6 +260,39 @@ class WastedYearsDB:
         result = self.conn.execute(
             sa.select(columns).order_by(*order_cols))
         return [models.WordInfo(**row) for row in result]
+
+    def get_word_report(
+            self,
+            start_ts: datetime.datetime,
+            end_ts: datetime.datetime) -> dict[str, models.WordInfo]:
+        result = self.conn.execute(
+            sa.select([
+                self.tbl_tasks.c.start_ts,
+                self.tbl_tasks.c.end_ts,
+                self.tbl_task_words.c.word_id,
+                self.tbl_words.c.word,
+            ])
+            .select_from(
+                self.tbl_tasks
+                .join(self.tbl_task_words)
+                .join(self.tbl_words)
+            )
+            .where(sa.and_(
+                self.tbl_tasks.c.start_ts >= start_ts,
+                self.tbl_tasks.c.start_ts < end_ts,
+            ))
+        )
+        word_map: dict[str, models.WordInfo] = {}
+        for row in result:
+            word_info = word_map.get(row.word)
+            if word_info is None:
+                word_info = word_map[row.word] = models.WordInfo(word=row.word)
+
+            elapsed = (row.end_ts - row.start_ts).seconds
+            word_info.total_count += 1
+            word_info.total_elapsed += elapsed
+
+        return word_map
 
     def load_task(self, row) -> models.Task:
         task = models.Task(**row)

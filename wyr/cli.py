@@ -5,6 +5,7 @@ import sys
 from typing import Tuple
 
 import click
+from dateutil import relativedelta as rdelta
 
 from . import config, models, database
 
@@ -113,7 +114,39 @@ def list_words():
         words = db.list_words(order_by='ec')
 
     for wordinfo in words:
-        print(f'{wordinfo.total_count:-6}{wordinfo.total_elapsed:-8}s  {wordinfo.word}')
+        print(wordinfo)
+
+
+@main.command('weekly')
+def weekly_report():
+    '''report activity by week'''
+    import logging
+    logging.basicConfig(
+        format='%(levelname)-1.1s %(name)s: %(message)s'
+    )
+    # logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
+
+    cfg = config.get_config()
+    with database.open_db(cfg) as db:
+        # Get the list of all dates visible in the database as task start_ts.
+        # Wind back to the previous Monday to get the set of distinct
+        # weeks (as Monday dates).
+        task_dates = db.get_task_dates()
+        delta = rdelta.relativedelta(weekday=rdelta.MO(-1))
+        week_starts = sorted({date - delta for date in task_dates})
+
+        for date in week_starts:
+            print(f'{date}')
+            word_map = db.get_word_report(
+                start_ts=date, end_ts=date + datetime.timedelta(days=7))
+
+            words = sorted(
+                word_map.values(),
+                key=lambda wi: (-wi.total_elapsed, -wi.total_count))
+
+            for wordinfo in words:
+                print(wordinfo)
+            print()
 
 
 @main.command('ingest')

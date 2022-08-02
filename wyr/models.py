@@ -25,6 +25,9 @@ class WordInfo:
     total_count: int = 0
     total_elapsed: int = 0
 
+    def __str__(self):
+        return f'{self.total_count:-6}{self.total_elapsed:-8}s  {self.word}'
+
 
 _simple_url_re = re.compile(r'[a-z0-9\+\-]+://\S+')
 _split_re = re.compile(r'\b')

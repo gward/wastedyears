@@ -3,7 +3,18 @@
 10:00 .. 10:15 daydreaming
 
 
-2022-06-11
+2022-06-06
+----------
+09:15 .. 10:01 watercooler
+10:01 .. 10:43 check email
+10:43 .. 11:31 work on feature http://bugs.example.com/1323
+11:31 .. 12:11 lunch
+12:11 .. 12:43 check email
+12:43 .. 13:01 look busy
+13:01 .. 13:32 break
+13:32 .. 14:58 work on feature http://bugs.example.com/1323
+
+2022-06-13
 ----------
 08:43 .. 08:59 check email
 08:59 .. 10:15 coffee watercooler
@@ -14,7 +25,7 @@
 13:59 .. 14:31 check email
 14:31 .. 15:02 look busy
 
-2022-06-12
+2022-06-14
 ----------
 08:51 .. 11:43 work on feature http://bugs.example.com/1323
 11:43 .. 12:32 lunch

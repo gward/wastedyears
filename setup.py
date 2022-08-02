@@ -2,6 +2,7 @@ import setuptools
 
 install_requires = [
     'click >= 8.1',
+    'python-dateutuil >= 2.8',
     'SQLAlchemy >= 1.4',
 ]
 dev_requires = [
@@ -10,6 +11,7 @@ dev_requires = [
     'pycodestyle >= 2.8.0',
     'pytest >= 7.1',
     'sqlalchemy-stubs >= 0.4',
+    'types-python-dateutil >= 2.8',
 ]
 
 setuptools.setup(
