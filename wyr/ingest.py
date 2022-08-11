@@ -54,7 +54,7 @@ def ingest(db: database.WastedYearsDB, infile) -> Iterable[models.Task]:
             previous_task = task
         else:
             raise ValueError(
-                f'{infile.name}{line_num+1}: could not parse line')
+                f'{infile.name}:{line_num+1}: could not parse line')
 
 
 def _parse_task(
