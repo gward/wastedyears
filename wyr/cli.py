@@ -38,10 +38,14 @@ def main():
 
 
 @main.command()
-def init():
+@click.option('--drop/--no-drop', default=False,
+              help='drop all tables before recreating them')
+def init(drop: bool):
     '''initialize wastedyears (database only -- no config file yet)'''
     cfg = config.get_config()
     with database.open_db(cfg) as db:
+        if drop:
+            db.destroy_schema()
         db.init_schema()
 
 

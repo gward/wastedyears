@@ -108,6 +108,9 @@ class WastedYearsDB:
     def init_schema(self):
         self.metadata.create_all(bind=self.conn)
 
+    def destroy_schema(self):
+        self.metadata.drop_all(bind=self.conn)
+
     def end_last_task(self, end_ts: datetime.datetime):
         '''update the most recently added task: set end_ts, if not already set'''
         tbl = self.tbl_tasks
