@@ -25,7 +25,7 @@ setuptools.setup(
     },
     entry_points={
         'console_scripts': [
-            'wy = wyr.cli:main',
+            'wy = wastedyears.cli:main',
         ],
     },
 )

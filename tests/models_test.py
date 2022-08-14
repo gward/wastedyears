@@ -1,4 +1,4 @@
-from wyr import models
+from wastedyears import models
 
 
 def test_split_description():

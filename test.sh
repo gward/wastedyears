@@ -1,6 +1,6 @@
 #!/bin/sh
 set -e
-src="wyr tests"
+src="wastedyears tests"
 pyflakes $src
 mypy --check-untyped-defs $src
 pytest -q --color=no tests

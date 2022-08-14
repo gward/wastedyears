@@ -8,7 +8,7 @@ import pytest
 import sqlalchemy as sa
 import sqlalchemy.engine.base
 
-from wyr import database, models
+from wastedyears import database, models
 
 _tmp_dir: Optional[str] = None
 _test_engine: Optional[sqlalchemy.engine.base.Engine] = None
@@ -17,7 +17,7 @@ _test_engine: Optional[sqlalchemy.engine.base.Engine] = None
 def open_test_db() -> database.WastedYearsDB:
     global _tmp_dir, _test_engine
     if _test_engine is None:
-        _tmp_dir = tempfile.mkdtemp(prefix='wyr.database_test.')
+        _tmp_dir = tempfile.mkdtemp(prefix='wastedyears.database_test.')
         db_url = 'sqlite:///' + os.path.join(_tmp_dir, 'test.sqlite')
         _test_engine = database.create_engine(db_url)
 
