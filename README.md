@@ -38,7 +38,7 @@ command-line and GUI.
 
 At the command line, you can run
 
-    wyr t check email
+    wy t check email
 
 to end the previous task and start the next one.
 
@@ -46,13 +46,13 @@ to end the previous task and start the next one.
 
 Or you can simply run
 
-    wyr t
+    wy t
 
 to enter a task into a text editor.
 The editor will actually show some recent tasks,
 so you can copy/paste frequently used items:
 
-    # wyr task editor; enter new task here:
+    # wy task editor; enter new task here:
 
 
     # recent tasks from yesterday:
@@ -76,7 +76,7 @@ That's how you get those gaps in the record --
 
 Finally, you can run
 
-    wyr gui
+    wy gui
 
 to open a small graphical interface that is designed for a quick
 get-in-get-out experience.
@@ -126,9 +126,9 @@ TBD!
 
 There are a couple of command-line tools to list what's in the database:
 
-    wyr ls-tasks
+    wy ls-tasks
 
-    wyr ls-words
+    wy ls-words
 
 By default, these list in a simple plain-text format.
 Use `--json` to dump the data in JSON.
@@ -143,6 +143,6 @@ If you're comfortable with SQL, you can of course do this entirely manually:
 
 So far, there is only one built-in analytics command:
 
-    wyr rank-words
+    wy rank-words
 
 to list words from "most elapsed time" to least.

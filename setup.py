@@ -25,7 +25,7 @@ setuptools.setup(
     },
     entry_points={
         'console_scripts': [
-            'wyr = wyr.cli:main',
+            'wy = wyr.cli:main',
         ],
     },
 )
